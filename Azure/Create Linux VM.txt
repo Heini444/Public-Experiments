@@ -1,0 +1,73 @@
+#From Cloud Shell, run the following az vm create command to create a Linux VM:
+#Azure CLI
+
+az vm create \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --name my-vm \
+  --public-ip-sku Standard \
+  --image Ubuntu2204 \
+  --admin-username azureuser \
+  --generate-ssh-keys   
+
+#Run the following az vm extension set command to configure Nginx on your VM:
+#Azure CLI
+
+az vm extension set \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --vm-name my-vm \
+  --name customScript \
+  --publisher Microsoft.Azure.Extensions \
+  --version 2.1 \
+  --settings '{"fileUris":["https://raw.githubusercontent.com/MicrosoftDocs/mslearn-welcome-to-azure/master/configure-nginx.sh"]}' \
+  --protected-settings '{"commandToExecute": "./configure-nginx.sh"}'
+
+To verify the VM you created previously is still running, use the following command:
+az vm list
+
+Run the following az vm list-ip-addresses command to get your VM's IP address and store the result as a Bash variable:
+IPADDRESS="$(az vm list-ip-addresses \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --name my-vm \
+  --query "[].virtualMachine.network.publicIpAddresses[*].ipAddress" \
+  --output tsv)"    
+
+Run the following to print your VM's IP address to the console:
+echo $IPADDRESS 
+
+Run the following curl command to download the home page:
+curl --connect-timeout 5 http://$IPADDRESS
+
+Run the following az network nsg list command to list the network security groups that are associated with your VM:
+az network nsg list \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --query '[].name' \
+  --output tsv
+
+Run the following az network nsg rule list command to list the rules associated with the NSG named my-vmNSG:
+az network nsg rule list \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --nsg-name my-vmNSG 
+
+Run the az network nsg rule list command a second time. This time, use the --query argument to retrieve only the name, priority, affected ports, and access (Allow or Deny) for each rule. The --output argument formats the output as a table so that it's easy to read.
+az network nsg rule list \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --nsg-name my-vmNSG \
+  --query '[].{Name:name, Priority:priority, Port:destinationPortRange, Access:access}' \
+  --output table
+
+Run the following az network nsg rule create command to create a rule called allow-http that allows inbound access on port 80:
+az network nsg rule create \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --nsg-name my-vmNSG \
+  --name allow-http \
+  --protocol tcp \
+  --priority 100 \
+  --destination-port-range 80 \
+  --access Allow 
+
+To verify the configuration, run az network nsg rule list to see the updated list of rules:
+az network nsg rule list \
+  --resource-group "learn-3dd0b388-9538-4889-8828-47dbb52e46f9" \
+  --nsg-name my-vmNSG \
+  --query '[].{Name:name, Priority:priority, Port:destinationPortRange, Access:access}' \
+  --output table               
