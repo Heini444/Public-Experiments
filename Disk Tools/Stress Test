@@ -1,0 +1,112 @@
+#https://wiki.archlinux.org/title/Badblocks
+#https://github.com/ezonakiusagi/bht.git
+#install Git
+apt-get install git
+
+#change dir 
+cd /opt
+
+#download script
+git clone "https://github.com/ezonakiusagi/bht.git"
+
+#install requirements
+sudo apt-get install smartmontools lsscsi mailutils ksh lvm2
+
+#run
+./bht /dev/sdb /dev/sde /dev/sdf
+
+#status
+./bht --status
+
+#terminate/stop test
+bht --terminate
+
+#https://github.com/Spearfoot/disk-burnin-and-testing
+
+#download the script from git repo
+cd /opt
+wget " "
+
+#take ownerhip of script
+chown 755 disk-burnin.sh
+
+#run script with below command, in tmux session.
+cd /opt
+tmux
+./disk-burnin.sh -f -o /opt/burn-in-logs /dev/sd[e]
+
+#run badblocks itself
+badblocks -b 4096 -wsv /dev/sd[X]
+badblocks -b 4096 -wsv  -o /opt/BBlog.txt /dev/sd[b]
+
+#Options:
+
+-w: do a destructive write test
+-s: show progress
+-v: be "verbose" and output bad sectors detected to stdout
+Additional options you might consider:
+
+-b number: specify the block size of the hard disk which can significantly improve testing time. (tune2fs -l partition | grep 'Block size' as the root user)
+-p number: run through the extensive four pass test number of sequent iterations
+-o /path/to/output-file: print bad sectors to output-file instead of stdout
+-t test_pattern: Specify a pattern. 
+
+-------------------------------------------------------------------------------------------------
+Alternative, faster way:
+#Span a crypto layer above the device:
+cryptsetup open /dev/sd[b] [1tb] --type plain --cipher aes-xts-plain64
+
+#Fill the now opened decrypted layer with zeroes, which get written as encrypted data:
+shred -v -n 0 -z /dev/mapper/[1tb]
+
+#Compare fresh zeroes with the decrypted layer:
+#If it just stops with a message about end of file, the drive is fine.
+cmp -b /dev/zero /dev/mapper/[1tb]
+-------------------------------------------------------------------------------------------------
+The correct way to bad block a disk is to use e2fsck, not badblocks directly. See man badblocks for more details...
+
+It is strongly recommended that users not run badblocks directly, but rather use the -c option of the e2fsck and mke2fs programs
+
+Note: do NOT abort a bad block scan!
+
+Note: do NOT bad block a SSD
+
+Note: backup your important files FIRST!
+
+Note: this will take many hours
+
+Note: you may have a pending HDD failure
+
+Boot to a Ubuntu Live DVD/USB in “Try Ubuntu” mode.
+
+In terminal...
+
+sudo fdisk -l # identify all "Linux Filesystem" partitions
+
+sudo e2fsck -fcky /dev/sdXX # read-only test
+
+or
+
+sudo e2fsck -fccky /dev/sdXX # non-destructive read/write test (recommended)
+
+The -k is important, because it saves the previous bad block table, and adds any new bad blocks to that table. Without -k, you loose all of the prior bad block information.
+
+The -fccky parameter...
+
+   -f    Force checking even if the file system seems clean.
+
+   -c    This option causes e2fsck to use badblocks(8) program to do
+         a read-only scan of the device in order to find any bad blocks.
+         If any bad blocks are found, they are added to the bad block
+         inode to prevent them from being allocated to a file or direc‐
+         tory.  If this option is specified twice, then the bad block scan
+         will be done using a non-destructive read-write test.
+
+   -k    When combined with the -c option, any existing bad blocks in the
+         bad blocks list are preserved, and any new bad blocks found by
+         running badblocks(8) will be added to the existing bad blocks
+         list.
+
+   -y    Assume an answer of `yes' to all questions; allows e2fsck to be
+         used non-interactively. This option may not be specified at the
+         same time as the -n or -p options.
