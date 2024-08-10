@@ -6,3 +6,14 @@ $env:Path += ";C:\Program Files\WindowsPowerShell\Scripts"
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 Install-Script -Name Get-WindowsAutopilotInfo
 Get-WindowsAutopilotInfo -OutputFile AutopilotHWID.csv
+
+# At the OOBE, open a command prompt session. Shift F10 
+
+# Launch PowerShell
+Powershell.exe
+
+# Set PowerShell Execution Policy
+Set-ExecutionPolicy bypass
+
+# Install the AutoPilot Script
+install-script get-windowsautopilotinfo
