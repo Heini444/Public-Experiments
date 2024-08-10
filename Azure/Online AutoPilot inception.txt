@@ -1,0 +1,6 @@
+#When the last command of Get-WindowsAutopilotInfo -Online runs, a Microsoft Entra ID sign-on #prompt is displayed. Sign in with an account that is at least an Intune Administrator.
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+ Install-Script -Name Get-WindowsAutopilotInfo -Force
+ Get-WindowsAutopilotInfo -Online

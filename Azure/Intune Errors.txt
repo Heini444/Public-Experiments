@@ -1,0 +1,3 @@
+#Error 65000 with Settings Catalog
+#Changing the registry following registry key worked.
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Feeds DWORD ShellFeedsTaskbarViewMode value 2.
