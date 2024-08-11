@@ -1,5 +1,7 @@
-#https://wiki.archlinux.org/title/Badblocks
-#https://github.com/ezonakiusagi/bht.git
+#Stress test Disks. Always test any new or used disk to determine viability, and quality of new disks - RMA if stats is bad.
+#stress test takes days to complete on large drives!!!
+#Read more - https://wiki.archlinux.org/title/Badblocks
+#Script to simplefy - https://github.com/ezonakiusagi/bht.git
 #install Git
 apt-get install git
 
@@ -12,20 +14,33 @@ git clone "https://github.com/ezonakiusagi/bht.git"
 #install requirements
 sudo apt-get install smartmontools lsscsi mailutils ksh lvm2
 
+#show block storage and partitions
+lsblk
+
+#or
+
+#list partitions
+fdisk -l # identify all "Linux Filesystem" partitions
+
+#Optional# Fdisk and delete partitions on target drives
+fdisk /dev/sdb
+p = print
+d = delete
+w = write & exit
+
 #run
 ./bht /dev/sdb /dev/sde /dev/sdf
 
-#status
+#check status
 ./bht --status
 
 #terminate/stop test
 bht --terminate
-
-#https://github.com/Spearfoot/disk-burnin-and-testing
-
+--------------------------------------------------------
+#Another badblocks tool > https://github.com/Spearfoot/disk-burnin-and-testing
 #download the script from git repo
 cd /opt
-wget " "
+wget "https://github.com/Spearfoot/disk-burnin-and-testing"
 
 #take ownerhip of script
 chown 755 disk-burnin.sh
@@ -40,19 +55,16 @@ badblocks -b 4096 -wsv /dev/sd[X]
 badblocks -b 4096 -wsv  -o /opt/BBlog.txt /dev/sd[b]
 
 #Options:
-
 -w: do a destructive write test
 -s: show progress
 -v: be "verbose" and output bad sectors detected to stdout
 Additional options you might consider:
-
 -b number: specify the block size of the hard disk which can significantly improve testing time. (tune2fs -l partition | grep 'Block size' as the root user)
 -p number: run through the extensive four pass test number of sequent iterations
 -o /path/to/output-file: print bad sectors to output-file instead of stdout
 -t test_pattern: Specify a pattern. 
-
 -------------------------------------------------------------------------------------------------
-Alternative, faster way:
+#Alternative, faster way:
 #Span a crypto layer above the device:
 cryptsetup open /dev/sd[b] [1tb] --type plain --cipher aes-xts-plain64
 
@@ -63,35 +75,30 @@ shred -v -n 0 -z /dev/mapper/[1tb]
 #If it just stops with a message about end of file, the drive is fine.
 cmp -b /dev/zero /dev/mapper/[1tb]
 -------------------------------------------------------------------------------------------------
-The correct way to bad block a disk is to use e2fsck, not badblocks directly. See man badblocks for more details...
+#Alternative - Tested, not personal preferance - i like to weed out the bad disks, badblocks seem to do a more robust test. 
+#The correct way to bad block a disk is to use e2fsck, not badblocks directly. See man badblocks for more details...
+#It is strongly recommended that users not run badblocks directly, but rather use the -c option of the e2fsck and mke2fs programs
+#Note: do NOT abort a bad block scan!
+#Note: do NOT bad block a SSD
+#Note: backup your important files FIRST!
+#Note: this will take many hours
+#Note: you may have a pending HDD failure
+#Boot to a Ubuntu Live DVD/USB in “Try Ubuntu” mode.
+#In terminal...
 
-It is strongly recommended that users not run badblocks directly, but rather use the -c option of the e2fsck and mke2fs programs
-
-Note: do NOT abort a bad block scan!
-
-Note: do NOT bad block a SSD
-
-Note: backup your important files FIRST!
-
-Note: this will take many hours
-
-Note: you may have a pending HDD failure
-
-Boot to a Ubuntu Live DVD/USB in “Try Ubuntu” mode.
-
-In terminal...
-
+#list partitions
 sudo fdisk -l # identify all "Linux Filesystem" partitions
 
-sudo e2fsck -fcky /dev/sdXX # read-only test
+# read-only test
+sudo e2fsck -fcky /dev/sdXX
 
-or
+#or
 
-sudo e2fsck -fccky /dev/sdXX # non-destructive read/write test (recommended)
+# non-destructive read/write test (recommended)
+sudo e2fsck -fccky /dev/sdXX 
 
-The -k is important, because it saves the previous bad block table, and adds any new bad blocks to that table. Without -k, you loose all of the prior bad block information.
-
-The -fccky parameter...
+#The -k is important, because it saves the previous bad block table, and adds any new bad blocks to that table. Without -k, you loose all of the prior bad block information.
+#The -fccky parameter...
 
    -f    Force checking even if the file system seems clean.
 
