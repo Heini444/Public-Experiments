@@ -1,0 +1,28 @@
+[site]-OOB-SW1
+172.255.255.2/24 > Vlan 1 - Host_VLAN (Physical Hosts,NAS,OOBEngine)
+172.255.254.1/24 > Vlan 2 - ONOS
+172.255.252.1/24 > Vlan 3 - SAN
+172.255.251.1/24 > Vlan 4 - SAN
+172.255.253.1/24 > Vlan 5 - OOB VM LAN / ID Rack Network
+
+ip dns server-address 10.36.102.100
+
+#Login to your switch.
+#After login type: <switch># 
+config
+#You will enter the config mode, type: <switch>(config)# 
+show vlans to show the VLAN configuration.
+#To enable Jumbo Frames on the VLAN type: <switch>(config)# 
+vlan <ID#> jumbo
+#Check if the setting applied successfully by typing: <switch>(config)# show vlans again. The Jumbo column for the specific VLAN in the output should change to Yes.
+#Save your changes:<switch>(config)# 
+write memory
+#show route map
+sh ip route
+#add static routes
+ip route <dest-ip-addr>/<mask-length> <next-hop-ip-addr|vlan <vlan-id>|reject|blackhole> [metric <metric>] [distance <1-255>] [tag-value <tagval>]
+#add static dns
+ip route 10.36.102.0/24 172.255.255.1 
+#default route/internet
+ip route 0.0.0.0/0 172.255.255.1
+

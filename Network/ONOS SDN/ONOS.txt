@@ -1,0 +1,263 @@
+#ONOS requires the following ports to be open, in order to make the corresponding functionalities available:
+
+#8181    for REST API and GUI
+#8101    to access the ONOS CLI
+#9876    for intra-cluster communication (communication between target machines)
+#6653    optional, for OpenFlow
+#6640    optional, for OVSDB
+-------------------------------------------------------------------------------------------------------------
+#############################################################################################################
+#Ubuntu 18.04 VM cluster install
+
+#setup LAN
+sudo nano /etc/netplan/50-cloud-init.yaml
+
+#edit the yaml
+network:
+    ethernets:
+      ens3:
+       dhcp4: no
+       addresses: [172.255.254.10/24]
+       gateway4: 172.255.254.1
+       nameservers:
+        addresses: [8.8.8.8, 1.1.1.1]
+    version: 2
+
+
+#Apply config and check for errors
+sudo netplan --debug apply
+
+#update
+sudo apt-get update
+sudo apt-get upgrade
+
+#install ovirt mon agent
+sudo apt-get install ovirt-guest-agent
+
+----------------------------------------------------------------------------------------------------------------------------
+############################################################################################################################
+#Install Java 11
+sudo apt install openjdk-11-jdk
+
+#Check Version
+javac -version
+-----------------------------------------------------------------------------------------------------------------------------
+#############################################################################################################################
+#Add the following configuration to each Atomix Cluster (adjust to each hostname)
+
+sudo nano /etc/hosts
+
+172.255.254.10 zu-atomix1
+172.255.254.11 zu-atomix2
+172.255.254.12 zu-atomix3
+172.255.254.10 onos-1
+172.255.254.11 onos-2
+172.255.254.12 onos-3
+
+---------------------------------------------------------------------------------------------------------------------------
+###########################################################################################################################
+#Form an ATOMIX cluster of three instances, from one of the target machines
+
+#Make DIR
+sudo mkdir /opt/atomix && cd /opt/atomix
+
+#Donwload Atomix
+sudo curl -LJO "https://repo1.maven.org/maven2/io/atomix/atomix-dist/3.1.7/atomix-dist-3.1.7.tar.gz"
+
+#unpack the distribution into the desired directory:
+sudo tar -xvf atomix-dist-3.1.7.tar.gz
+
+#Remove tar
+sudo rm atomix-dist-3.1.7.tar.gz
+
+#update the /conf/atomix.conf configuration with the desired configuration 
+sudo nano conf/atomix.conf
+
+#config atomix.conf for each node [remember to change "id" to respective node ip]
+----------------------------------------------------------------------------------------------------------------------------
+cluster {
+  cluster-id: onos
+  node {
+    id: zu-atomix1
+    address: "172.255.254.10:5679"
+ }
+ discovery {
+    type: bootstrap
+    nodes.1 {
+      id: zu-atomix1
+      address: "172.255.254.10:5679"
+    }
+    nodes.2 {
+      id: zu-atomix2
+      address: "172.255.254.11:5679"
+    }
+    nodes.3 {
+      id: zu-atomix3
+      address: "172.255.254.12:5679"
+    }
+  }
+}
+
+management-group {
+  type: raft
+  partitions: 1
+  storage.level: disk
+  members: [zu-atomix1, zu-atomix2, zu-atomix3]
+}
+
+partition-groups.raft {
+  type: raft
+  partitions: 3
+  storage.level: disk
+  members: [zu-atomix1, zu-atomix2, zu-atomix3]
+}
+----------------------------------------------------------------------------------------------------------------
+################################################################################################################
+#run the atomix-agent from local folder to test:
+sudo ./bin/atomix-agent
+################################################################################################################
+----------------------------------------------------------------------------------------------------------------
+#To Create a service to autostart atomix at boot, change to system dir
+cd /etc/systemd/system/
+
+#Create file called atomix.service, and copy the code below
+sudo nano atomix.service
+---------------------------------------------------------------------------------------
+[Unit]
+Description=Atomix
+After=network-online.target
+After=local-fs.target
+After=onos.service
+
+[Service]
+ExecStart=/opt/atomix/bin/atomix-agent start
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+-------------------------------------------------------------------------------------------------------------
+#Install systemd service unit and enable it so it will be executed at the boot time
+#Delegate rights
+sudo chmod 664 /etc/systemd/system/atomix.service
+
+#Reload service
+sudo systemctl daemon-reload
+
+#Enable the newly created service
+sudo systemctl enable atomix.service
+
+#Test service
+sudo systemctl start atomix.service
+
+#Chech status
+sudo systemctl status atomix.service
+
+#Stop service
+sudo systemctl stop atomix.service
+---------------------------------------------------------------------------------------------------------------
+################################################################################################################
+#Add the following configuration in each ONOS Cluster (adjust to each hostname)
+
+#change directory to OPT & create dir
+sudo mkdir -p /opt && cd /opt
+
+#download onos 2.3
+sudo wget -c "https://repo1.maven.org/maven2/org/onosproject/onos-releases/2.3.0/onos-2.3.0.tar.gz"
+
+#Untar the ONOS archive into /opt [$ONOS_VERSION = full name of downloaded version]
+sudo tar xzf onos-$ONOS_VERSION.tar.gz
+
+#Rename the extracted directory to "onos"
+sudo mv onos-$ONOS_VERSION onos
+
+########################################### TESTING ##########################################################
+#Verify/Test by Running ONOS using its start-stop script
+sudo ./onos/bin/onos-service start
+
+#Alternatively, while in the bin directory, run 
+sudo ./onos-service start
+
+#Access to the ONOS GUI from a browser. The default username and password is onos / rocks.
+http://XX.YY.WW.ZZ:8181/onos/ui/index.html
+
+#stop ONOS
+sudo ./onos-service stop
+------------------------------------------------------------------------------------------------------------
+############################################################################################################
+#To configure the ONOS cluster, place the cluster.json file in the /config directory under the ONOS root
+#ONOS cluster.json
+
+#Create dir
+sudo mkdir /opt/onos/config/
+
+#Create cluster.json file
+sudo nano /opt/onos/config/cluster.json
+
+#Copy below code to json file
+
+{
+  "name": "onos",
+  "node": {
+    "id": "onos-1",
+    "ip": "172.255.254.10",
+    "port": 9876
+  },
+  "storage": [
+    {
+      "id": "zu-atomix1",
+      "host": "zu-atomix1",
+      "port": 5679
+    },
+    {
+      "id": "zu-atomix2",
+      "host": "zu-atomix2",
+      "port": 5679
+    },
+    {
+      "id": "zu-atomix3",
+      "host": "zu-atomix3",
+      "port": 5679
+    }
+  ]
+}
+----------------------------------------------------------------------------------------------------------
+
+*Install the service files
+sudo cp /opt/onos/init/onos.initd /etc/init.d/onos
+
+*edit onos service
+sudo nano /etc/init.d/onos
+
+*Change below line so it is set to correct ONOS Dir
+ONOS_HOME=${ONOS_HOME:-/opt/onos}
+
+*Additional steps for Systemd based systems
+sudo cp /opt/onos/init/onos.service /etc/systemd/system/
+
+*edit onos.service
+sudo nano /etc/systemd/system/onos.service
+
+*add line under [Service]
+ExecStartPre=/bin/sleep 45
+
+sudo systemctl daemon-reload
+sudo systemctl enable onos
+
+*Additional steps for Systemd based systems
+sudo systemctl {start|stop|status|restart} onos.service
+
+
+--------------------------------------------------------------------------------------------------------
+Optional
+---------
+//sudo adduser sdn --system --group
+
+*Remove default User
+/opt/onos/bin/onos-user-password onos --remove
+
+*add the desired username and password yourself
+/opt/onos/bin/onos-user-password onos @squillion!
+
+*generate ssh-keygen and add the public key
+ssh-keygen -t rsa
+/opt/onos/bin/onos-user-key $USER ~/.ssh/id_rsa.pub

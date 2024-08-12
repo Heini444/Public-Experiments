@@ -1,0 +1,49 @@
+#Open PUTTY with a serial connection and the following settings (38400, 8, 1, N)
+
+#When "Press Ctrl-B to enter Extended Boot menu..." appears, press "CTRL+B"
+
+#Press Ctrl-B to enter Extended Boot menu...0
+Please input BootRom password:
+
+   BOOT MENU
+
+#5.  Press "7" to "Skip current system configuration"
+
+1. Download application file to flash
+2. Select application file to boot
+3. Display all files in flash
+4. Delete file from flash
+5. Modify BootRom password
+6. Enter BootRom upgrade menu
+7. Skip current system configuration
+8. Set BootRom password recovery
+9. Set switch startup mode
+0. Reboot
+
+Enter your choice(0-9): 7
+
+7. Press "Y" to skip the current config at next reboot
+
+The current setting will run with current configuration file when reboot.
+Are you sure you want to skip current configuration file when reboot? Yes or
+No (Y/N):Y
+Setting...Done!
+
+8. Now Press "0" to reboot the switch
+
+   BOOT MENU
+
+1. Download application file to flash
+2. Select application file to boot
+3. Display all files in flash
+4. Delete file from flash
+5. Modify BootRom password
+6. Enter BootRom upgrade menu
+7. Skip current system configuration
+8. Set BootRom password recovery
+9. Set switch startup mode
+0. Reboot
+
+Enter your choice(0-9): 0
+
+9. The switch will reboot, allow it to fully boot this time
