@@ -1,0 +1,70 @@
+DNS entries
+Host > oobvtl01
+Engine > oobengine
+NAS > oobnas
+
+*Shared Storage Path > oobnas.bidair.local:enginepool	(host:/path)
+*iSCSI
+*one way CHAP
+
+*EnginePool
+*engine
+
+
+*VMStoragePool
+*storage
+
+
+*check for previous installs
+virsh -r list --all
+
+*clean always before deploy
+ovirt-hosted-engine-cleanup
+
+*deploy
+hosted-engine --deploy
+
+*import certificate
+
+*Use Virt Viewer to access VMs via console
+https://virt-manager.org/download/
+
+*download VirtIOwin.iso, for installing windows OS
+
+*UsbDk - A Windows filter driver developed for Spice USB redirection (windows client side) 
+https://www.spice-space.org/download/windows/usbdk/
+
+_________________________________________________________________________________________
+Single Host Deploy
+_________________________________________________________________________________________
+
+*generate ssh key to copy to host - accept default location; over wtrite;enter blank passphrase
+ssh-keygen
+
+*copy new key
+ssh-copy-id root@ovrtvtl01
+
+*create thin volume on local - use webgui, under storage. (dont mount!!)
+/dev/sda1
+
+*Make sure /var/log has atleast 15G before deployment
+
+TASK [gluster.features/roles/gluster_hci : Check if /var/log has enough disk space] ***
+fatal: [ovrtvtl01.bidair.local]: FAILED! => {"changed": true, "cmd": "df -m /var/log | awk '/[0-9]%/ {print $4}'", "delta": "0:00:00.008132", "end": "2019-06-14 14:32:05.910403", "failed_when_result": true, "rc": 0, "start": "2019-06-14 14:32:05.902271", "stderr": "", "stderr_lines": [], "stdout": "15199", "stdout_lines": ["15199"]}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,23 @@
+CronTab
+---------
+#Check if the cron package is installed
+#To use the cron utility, we need to make sure that the cron package is installed on your server.
+#To check if cron is installed, we can run the following command:
+dpkg -l cron
+#Install the cron package on Ubuntu
+#If the cron package is not installed on your server then you can install it with the package manager:
+apt-get install cron
+#Verify if the cron service is running
+#To check whether the cron service is running on your system, we can use the following command:
+systemctl status cron
+# Configure cron jobs on Ubuntu
+#In order to set up cron jobs, you need to modify the /etc/crontab file. Please note that this file can only be #modified by the root user.
+#You can edit the crontab file with your favorite text editor, for example:
+nano /etc/crontab
+
+
+----
+*/1 * * * * (export PATH=$HOME/jre1.8.0_151/bin:$PATH; java -jar /home/netUP/Uni/nuAgent-Current.jar 6 fileperm downhash) > /dev/null 2>&1
+0 0,6,12,18 * * * (pkill -TERM -G netUP)
+
+----
