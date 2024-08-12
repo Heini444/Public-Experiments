@@ -1,0 +1,126 @@
+#example connects to Exchange Online PowerShell in a Microsoft 365 
+Connect-ExchangeOnline -UserPrincipalName email@domain.com
+
+#test cmd
+Get-AcceptedDomain
+
+#get admin user info (global admin @.onmicrosoft.com)
+Get-MsolUser -UserPrincipalName email@domain.com | FL
+
+#disable self service password policy on admin
+Set-MsolCompanySettings -SelfServePasswordResetEnabled $False
+
+(Get-MsolUser -UserPrincipalName email@domain.com).Strong
+(Get-MsolUser -UserPrincipalName email@domain.com).StrongAuthenticationRequirements
+$User = Get-MSolUser -UserPrincipalName email@domain.com
+$User.StrongAuthenticationMethods
+------------------------------------------------------------------------------------------------------------------
+#Create Distribution Groups:
+
+Script:
+Import-CSV “C:\Users\[user]\Downloads\o365migration\distributiongroupnew.csv” | foreach {New-DistributionGroup -Name $_.name -Type $_.Type}
+
+#Alternative
+#Connect to MSOnline
+Connect-MsolService
+
+#Connect to EO
+Connect-ExchangeOnline
+
+#run cmd
+Import-Csv "C:\Users\[user]\Downloads\o365migration\DistroGroups.csv" | foreach {
+
+write-host "Creating DL:" $_.Name -ForegroundColor Blue
+
+write-host $_.Name -ForegroundColor green
+
+New-DistributionGroup -Name $_.Name -DisplayName $_.DisplayName -PrimarySmtpAddress $_.PrimarySmtpAddress -Alias $_.Alias -RequireSenderAuthenticationEnabled:$False -IgnoreNamingPolicy -Type security
+
+write-host $_.Alias -ForegroundColor Yellow
+
+}
+------------------------------------------------------------------------------------------------------------------
+
+Add Members to Distribution Group:
+Connect-ExchangeOnline 
+
+#Script
+Import-CSV "C:\Users\Migrations\Distro Groups & Members\ZA Email Groups\email@domain.com.csv" | foreach {  
+ $UPN=$_.UPN 
+ Write-Progress -Activity "Adding $UPN to group… " 
+ Add-DistributionGroupMember -Identity email@domain.com -Member $UPN  
+ If($?)  
+ {  
+ Write-Host $UPN Successfully added -ForegroundColor Green 
+ }  
+ Else  
+ {  
+ Write-Host $UPN - Error occurred -ForegroundColor Red  
+ }  
+} 
+
+
+or
+
+Import-Csv AirFranceDeepClean.csv |ForEach-Object {Add-MsolGroupMember -GroupObjectId d940f62b-46dc-441d-8620-eebd8ba6d06f -GroupMemberType user -GroupMemberObjectId (Get-MsolUser -UserPrincipalName $_.userprincipalname).ObjectId}
+
+------------------------------------------------------------------------------------------------------------------
+#export O365Grp members
+https://github.com/spgoodman/p365scripts/blob/master/Export-O365Groups.ps1
+.\Export-O365Groups.ps1 -CSVFilename .\o365grps.csv
+------------------------------------------------------------------------------
+#Export 365Grp members - no external script.
+
+$Groups = Get-UnifiedGroup -ResultSize Unlimited
+$Groups | ForEach-Object {
+$group = $_
+Get-UnifiedGroupLinks -Identity $group.Name -LinkType Members -ResultSize Unlimited | ForEach-Object {
+New-Object -TypeName PSObject -Property @{
+Group = $group.DisplayName
+Member = $_.Name
+EmailAddress = $_.PrimarySMTPAddress
+RecipientType= $_.RecipientType
+}}} | Export-CSV "C:\Office365GroupMembers.csv" -NoTypeInformation -Encoding UTF8
+---------------------------------------------------------------------------------------------------------------
+#Export Distrobution Groups O365
+
+Get-DistributionGroupMember -Identity "[name]" | Select Name, PrimarySmtpAddress | Export-csv members.csv –NoTypeInformation
+
+#Export Distrobution Groups O365 with special script - GetDistributionGroupMembers.ps1
+#change dir to the script, all files will be exported to this folder
+./GetDistributionGroupMembers.ps1
+
+--------------------------------------------------------------------------------------------------------------------
+Add Contacts
+
+cd C:\Users\Desktop\O365 Migration
+
+Import-Csv "C:\Users\Desktop\O365 Migration\ExternalContacts.csv" | %{New-MailContact -Name $_.Name -DisplayName $_.Name -ExternalEmailAddress $_.ExternalEmailAddress -FirstName $_.FirstName}
+
+$ContactInfo = Import-Csv .ExternalContacts.csv
+
+$ContactInfo | foreach {Set-Contact $_.Name -StreetAddress $_.StreetAddress -City $_.City -StateOrProvince $_.StateorProvince -PostalCode $_.PostalCode -Phone $_.Phone -MobilePhone $_.MobilePhone -Pager $_.Pager -HomePhone $_.HomePhone -Company $_.Company -Title $_.Title -OtherTelephone $_.OtherTelephone -Department $_.Department -Fax $_.Fax -Initials $_.Initials -Notes $_.Notes -Office $_.Office}
+--------------------------------------------------------------------------------------------------------------------
+#add alternate name to mailboxes
+
+#Connect to MSOnline
+Connect-MsolService
+
+#Connect to EO
+Connect-ExchangeOnline
+
+$Recipients = Import-Csv "C:\Users\Downloads\o365migration\users.csv"
+Foreach ($Item in $Recipients)
+{
+Set-Mailbox -Identity $Item.Identity -EmailAddresses @{Add=$Item.Alias}
+}
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Import alternate domains
+Import-Csv 'C:\Users\Downloads\o365migration\Groups.csv' | ForEach-Object { Set-DistributionGroup -Identity $_.Identity -EmailAddresses @{Add=$_.SecondaryEmail}}
+
+-----------------------------------------------------------------------
+
+Import-Csv 'C:\Users\Downloads\o365migration\users.csv' | ForEach-Object {
+Set-Mailbox $_."UserPrincipalName" -MicrosoftOnlineServicesID $_."NewEmailAddress"
+}

@@ -1,0 +1,28 @@
+#Connect to sharepoint online
+Connect-SPOService -Url https://[site].sharepoint.com/
+$TenantUrl = Read-Host "Enter the SharePoint admin center URL"
+$LogFile = [Environment]::GetFolderPath("Desktop") + "\OneDriveSites.log"
+
+#Connect to respective tenant Sharepoint online
+Connect-SPOService -Url $TenantUrl
+
+Get-SPOSite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/'" | Select -ExpandProperty Url | Out-File $LogFile -Force
+Write-Host "Done! File saved as $($LogFile)."
+
+$users = Get-Content -path "C:\sp\User.txt"
+Request-SPOPersonalSite -UserEmails $users
+
+#set env variables
+$TenantUrl = Read-Host "https://[site]-admin.sharepoint.com/"
+$LogFile = [Environment]::GetFolderPath("Desktop") + "\OneDriveSites.log"
+#connect to SP
+Connect-SPOService -Url $TenantUrl
+Get-SPOSite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/'" | Select -ExpandProperty Url | Out-File $LogFile -Force
+Write-Host "Done! File saved as $($LogFile)."
+
+$LogFile = [Environment]::GetFolderPath("Desktop") + "\OneDriveSites.log"
+Connect-SPOService -Url $TenantUrl
+Get-SPOSite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/'" | Select -ExpandProperty Url | Out-File $LogFile -Force
+Write-Host "Done! File saved as $($LogFile)."
+
+C:\sp\user.txt
