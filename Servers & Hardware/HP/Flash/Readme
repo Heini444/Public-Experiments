@@ -1,19 +1,2 @@
-##Prebuild from experiments repo
-#clone the git repo
-git clone --recurse-submodules https://github.com/kendallgoto/ilo4_unlock.git
-
-#Ensure any HP modules are unloaded (sudo modprobe -r hpilo)
-sudo modprobe -r hpilo
-
-#change to flash dir
-cd flash
-
-#then run sudo ./flash_ilo4 --direct to patch your server.
-sudo ./flash_ilo4 --direct
-
-# wait until the fans spin down ...
-sudo shutdown now 
-#Remove power and disable the security override after shutting down!
-
-Resist the urge to unplug the system and break everything while flashing. It will be loud. It took 2 minutes to erase, and 1 minute to flash.
-After patching, shut down and remove power from the server to disable the iLO4 security override.
+#cloned original repo and built files under /flash
+https://github.com/Heini444/HP_iLo4_Unlock
