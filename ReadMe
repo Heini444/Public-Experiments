@@ -1,3 +1,67 @@
 Public code-share/knowledge share.
 Experimentation with products and platforms.
 Shared insights on Tools of the trade.
+
+#Below, a list of sites that might be of interest.
+
+#Certification Recources
+https://www.mcmcse.com/studycenter.shtml
+
+#CyberSec
+https://www.knowbe4.com/free-cybersecurity-tools
+https://www.zenarmor.com/docs/network-security-tutorials/best-open-source-threat-hunting-tools
+https://www.crowdsec.net/
+https://documentation.wazuh.com/current/proof-of-concept-guide/index.html
+https://docs.securityonion.net/en/2.4/introduction.html
+https://github.com/utmstack/UTMStack
+https://www.helpnetsecurity.com/2024/03/21/webcopilot-open-source-automation-tool/
+https://github.com/PhonePe/mantis
+https://owasp.org/
+
+#VPN/Mesh/SDWAN
+https://docs.zerotier.com/awesome#zerotier-sd-wan
+(OPNsense) https://www.routerperformance.net/opnsense-repo/
+https://tailscale.com/kb/1017/install
+https://headscale.net/
+
+#SDN
+https://docs.trellisfabric.org/1.12/architecture.html
+
+
+#Hypervisors
+*Red Hat Virtualization/Ovirt(Centos)
+https://docs.redhat.com/en/documentation/red_hat_virtualization/4.4#Installing
+https://www.ovirt.org/documentation/migrating_from_a_standalone_manager_to_a_self-hosted_engine/index.html
+*Proxmox
+https://www.servethehome.com/proxmox-ve-7-initial-installation-checklist/
+https://forums.servethehome.com/index.php?threads/proxmox-ve-open-vswitch-ovs-discussion.7372/
+https://tteck.github.io/Proxmox/
+https://sweworld.net/cheatsheets/proxmox/
+* Red Hat OpenShift
+https://cgruver.github.io/okd4-single-node-cluster/
+*Qemu/KVM
+https://cloudbase.it/qemu-img-windows/
+https://nevermind.dk/nevermind/blog.nsf/subject/tutorial-moving-a-centos-physical-server-with-soft-raid-to-be-a-kvm-virtual-machine-guest-using-virt-p2v-and-virt-v2v
+
+#Storage
+*ZFS
+https://icesquare.com/wordpress/how-to-improve-zfs-performance/
+https://github.com/szaydel/Rigel-Major/blob/master/shell-snippets/zfs-tune-one-liners
+https://docs.docker.com/engine/storage/drivers/zfs-driver/
+*iSCSI (targetcli, iSER, RoCE, LUNs ...)
+https://gist.github.com/hiroyuki-sato/1be13ebf4872a98315f2
+https://knowledgebase.45drives.com/kb/kb450299-setup-iscsi-storage-server-on-ubuntu-20-04-lts/
+*RAID/HBA Controllers & Software RAID (MDADM)
+https://knowledgebase.45drives.com/kb/kb451408/
+https://knowledgebase.45drives.com/kb/kb450476-creating-hw-raid-using-megaraid-bios-configuration-utility/
+https://knowledgebase.45drives.com/kb/kb450475-mirroring-boot-drives-in-windows-installation/
+https://knowledgebase.45drives.com/kb/kb450102-setting-up-mdadm-arrays-in-houston/
+
+#KVM
+https://github.com/pikvm/pikvm#diy-getting-started
+
+#Orchestrators
+https://www.starlingx.io/software/
+
+#Tracking/GPS
+https://www.traccar.org/
