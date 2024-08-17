@@ -1,0 +1,169 @@
+#Enable console
+enable
+
+#Drop to Config terminal
+config t
+
+#Switch 1 IP - 192.168.254.2
+
+#Switch 1 DNS
+ip dns server-address 192.168.254.1
+ip dns server-address 8.8.8.8
+ip dns server-address 8.8.4.4
+ip dns server-address 1.1.1.1
+
+#Set Switch 1 name
+hostname DC-SW01
+
+#Set username and password
+username root password [password]
+
+#Route traffic out to firewall vIP
+ip route 0.0.0.0/0 192.168.254.1
+
+#Set NTP server
+clock timezone gmt GMT+02
+ntp
+disable serve
+server ntp1.meraka.csir.co.za #ZA servers!
+server ntp.dimensiondata.com #ZA servers!
+
+#Configure SNMPv2
+#If required, configure SNMPv2 logging. Replace ‘myAdmin’ and ‘myLocaion’ as preferred.
+
+snmp-server community public ro
+snmp-server contact ‘myAdmin’
+snmp-server location ‘myLocaion’
+
+#Recommend official Brocade or Foundry optics. 
+#Regardless of what optics, you'll first need to enable optic monitoring in general by running:
+optical-monitor
+
+#Trunk Port to TOR Switch, enable "dual-mode" to allow tagged and untagged VLANs
+int eth 1/1/48 
+dual-mode
+
+#Create & Configure VLANs
+vlan 1 name VL01_FlatLAN
+exit
+
+#Name/tag interfaces
+interface ethernet 1/1/28
+port-name B5-IDRACR640
+exit
+
+#Create & Configure VLANs
+vlan 2 name VL02_VOIP
+tagged ethernet 1/1/48
+exit
+
+#Create & Configure VLANs
+#Create virtual router interface, set IP on VE.
+vlan 3 name VL03_CCTV
+vlan 3
+tagged ethernet 1/1/48
+untagged ethernet 1/1/9
+router-interface ve 3
+interface ve 3
+ip address 192.168.253.1/24
+exit
+
+#Name port, turn on PoE (inline power)
+interface ethernet 1/1/9
+port-name CCTV-Cam1
+inline power
+exit
+
+vlan 4 name VL04_WiFi
+vlan 4
+tagged ethernet 1/1/48
+untagged ethernet 1/1/37
+router-interface ve 4
+interface ve 4
+ip address 192.168.252.1/24
+exit
+
+interface ethernet 1/1/37
+port-name WiFi-AP-OMesh
+inline power
+exit
+
+vlan 8 name VL08_SAN1
+untagged ethernet 1/3/1
+untagged ethernet 1/3/3
+exit
+
+vlan 9 name VL09_SAN2
+untagged ethernet 1/3/2
+untagged ethernet 1/3/4
+exit
+
+#Link Aggregation (802.3ad LACP)
+#all switch ports in the bond must be the same port type / speed
+#all switch ports being added to the bond cannot have an existing configuration on them (no IPs set etc)
+#all switch ports must have the same VLAN membership
+#Whatever ports you add must have the same VLAN membership as the existing LAG, or you'll get an error about tag type not matching.
+
+###LAGs
+lag virt01 dynamic
+ports ethernet 1/1/11 ethernet 1/1/12 ethernet 1/1/13 ethernet 1/1/14
+primary-port 1/1/11
+deploy
+
+lag virt02 dynamic
+ports ethernet 1/1/15 ethernet 1/1/16
+primary-port 1/1/15
+deploy
+
+lag virt03 dynamic
+ports ethernet 1/1/17 ethernet 1/1/18 ethernet 1/1/19 ethernet 1/1/20
+primary-port 1/1/17
+deploy
+
+###Examples
+#Configure trunk to OPNsense
+Port 1/2/1 is used as a trunk as its a 10gb port.
+Two modes of configuration are illustrated depending on your preference and security considerations.
+Permit only tags 10,20,30 & 40 to traverse the trunk.
+vlan 1
+untagged eth 1/2/1
+interface ethernet 1/2/1
+vlan-config add tagged-vlan 10 20 30 40
+exit
+
+#Alternatively, enable all tags to transfer across the trunk connection.
+vlan 1
+untagged eth 1/2/1
+interface ethernet 1/2/1
+vlan-config add all-tagged
+exit
+
+#Configure trunk to WiFi access point
+#Configure port 1/1/26 to have untagged VLAN 10, and tagged 20,30 & 40.
+vlan 10
+untagged ethernet 1/1/26
+interface ethernet 1/1/26
+vlan-config add tagged-vlan 20 30 40
+exit
+
+###Stacking Config
+stacking unit 1
+default-ports 1/2/2 1/2/2
+stack-trunk 1/2/2 to 1/2/2
+exit
+
+#Enable stacking ports
+stack enable
+exit
+
+#setup stacking
+stack-secure-setup
+
+#show port config briefly
+sh int br
+
+#Save configuration
+write mem
+
+# Reboot switch
+reload
