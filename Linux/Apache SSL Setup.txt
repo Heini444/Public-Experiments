@@ -1,11 +1,12 @@
 Configure the Apache SSL Parameters
-1: Let's create an SSL Parameters file and edit it
-
+#create an SSL Parameters file and edit it
 sudo nano /etc/apache2/conf-available/ssl-params.conf
-2: Copy and paste the following set of directives:
+
+#Copy and paste the following set of directives:
 SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
 SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
 SSLHonorCipherOrder On
+
 # Disable preloading HSTS for now.  You can use the commented out header line that includes
 # the "preload" directive if you understand the implications.
 # Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
@@ -18,17 +19,18 @@ SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
 # Requires Apache >= 2.4.11
 SSLSessionTickets Off
 
-Save and exit the buffer.
+#Save and exit the buffer.
 
-Configure the Apache Virtual Host
+#Configure the Apache Virtual Host
 
-1: Create a backup of the respective default virtualhost configuration; This will make sure that Apache can revert to the older configuration incase of any syntax errors.
+#Create a backup of the respective default virtualhost configuration; This will make sure that Apache can revert to the older configuration incase of any syntax errors.
 sudo cp /etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-available/default-ssl.conf.bak
 
-Proceed to the edit the default Apache Virtual Host Configuration
+#Proceed to the edit the default Apache Virtual Host Configuration
 sudo nano /etc/apache2/sites-available/default-ssl.conf
 
-Provide the proper directory and configuration name incase your have multiple virtual hosts on your server. This is for the default Virtual Host.3: Make sure the configuration matches with the format below. Replace yourdomain.com with your domain name and make sure to provide the correct paths for both the certificates and the private key.
+#Provide the proper directory and configuration name incase your have multiple virtual hosts on your server. This is for the default Virtual Host.
+#Make sure the configuration matches with the format below. Replace yourdomain.com with your domain name and make sure to provide the correct paths for both the certificates and the private key.
 
 <IfModule mod_ssl.c>
   <VirtualHost _default_:443>
