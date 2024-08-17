@@ -1,0 +1,66 @@
+OpenFlow Data Plane Abstraction (OF-DPA)
+----------------------------------------
+#download from EdgeCore
+ofdpa_3.0.5.5 accton2.3-1_amd64.deb
+
+#download / use winscp
+put in folder where .deb files resides
+
+#Copy the package to /mnt/onl/data; use powershell with below cmd to copy
+scp ofdpa_3.0.5.5_accton2.3-1_amd64.deb root@172.255.254.3:/mnt/onl/data/
+or
+pscp ofdpa_3.0.5.5_accton2.3-1_amd64.deb root@172.255.254.4:/mnt/onl/data/
+
+#Install
+dpkg -i --force-overwrite /mnt/onl/data/ofdpa_3.0.5.5_accton2.3-1_amd64.deb
+
+#Confi OF Agent
+sudo nano /etc/ofagent/ofagent.conf
+OPT_ARGS="-d 2 -c 2 -c 4 -t 172.255.254.10"
+
+# Controller
+#-----------------------
+CTRL1_IP="172.255.254.10"
+CTRL1_PORT="6653"
+CTRL2_IP="172.255.254.11"
+CTRL2_PORT="6653"
+CTRL3_IP="172.255.254.12"
+CTRL3_PORT="6653"
+LISTEN_IP="0.0.0.0"
+LISTEN_PORT="6653"
+
+DPID=`cat /sys/class/net/ma1/address | sed 's/://g'`
+#DPID="1"
+
+#Start OF-Agent
+service ofagentd start
+
+#The configuration of of-agentapp is at /etc/ofagent/ofagent.conf
+launcher ofagentapp -a2 -d4 -c1 -c2 -c3 -c4 -c5 --controller=172.255.254.10:6633 --listen=172.255.254.3:6653
+----------------------------------------------------------------------------------------------------------------
+
+#ssh in via console
+#Baud rate - 115200
+#on boot, select ONIE -> ONIE: Rescue
+
+onie-nos-install http://opennetlinux.org/binaries/2018.06.19.2333.16f97c4cae7fbe1c1d0761ad077b66c3f87bbf0e/ONL-master-ONL-OS-DEB8-2018-06-19.2333-16f97c4-AMD64-INSTALLED-INSTALLER
+
+root
+onl
+
+#edit management int
+nano /etc/network/interfaces
+
+auto ma1
+iface ma1 inet static
+address 172.255.254.4
+netmask 255.255.255.0
+gateway 172.255.254.1
+dns-nameservers 10.36.102.100 8.8.8.8
+
+#Set password
+passwd
+
+#reboot switch
+reboot
+
