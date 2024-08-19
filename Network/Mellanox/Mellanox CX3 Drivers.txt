@@ -1,0 +1,49 @@
+#https://community.mellanox.com/s/article/howto-install-mlnx-ofed-driver
+#Download drivers
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.4-x86_64.tgz
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.3-x86_64.tgz
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.2-x86_64.tgz
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.1-x86_64.tgz
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.0-x86_64.tgz
+
+#Uncompress the tar file
+tar -xvf MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.4-x86_64.tgz
+
+#change dir
+cd MLNX_OFED_LINUX-4.9-4.0.8.0-rhel8.4-x86_64.tgz/
+
+#Note: Before you install MLNX_OFED review the various of installation options
+./mlnxofedinstall [options] 
+
+#Restart the driver
+/etc/init.d/openibd restart
+
+#run install with option to rebuild for OS
+./mlnxofedinstall -vvv --add-kernel-support --distro RHEL8.4 --without-fw-update
+
+#run below command to check RDMA
+rdma link show
+
+#Load the rdma_rxe kernel module and add new RXE device:
+
+rdma link add rxe0 type rxe netdev eth0
+
+#where,
+#rxe0 specifies the name of the rdma link to add.
+#rxe specifies the rdma type to use.
+#netdev specifies the network device to which the link is bound.
+
+#Alternatively, use the ibstat utility to display a detailed status:
+ibstat mlx4_0
+
+#check Global Pause Flow Control
+ethtool -a enp5s0
+
+#In case it is disabled, run:
+ethtool -A enp5s0 rx on tx on
+
+#Important, make sure that Global Pause Flow Control is enabled on the switch as well on the relevant ports.
+#in case it is a mellanox switch (MLNX-OS) use the following command to enable it
+switch (config) # interface ethernet 1/1 flowcontrol receive on force
+switch (config) # interface ethernet 1/1 flowcontrol send on force
+
