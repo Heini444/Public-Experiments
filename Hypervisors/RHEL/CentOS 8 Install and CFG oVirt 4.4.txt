@@ -1,0 +1,311 @@
+Login to your CentOS 8 host system with ssh.
+ssh root@serverip
+
+#Confirm it is CentOS 8 System.
+cat /etc/redhat-release
+
+#Set correct hostname:
+sudo hostnamectl set-hostname [server-fqdn]
+
+#Set timezone.
+sudo timedatectl set-timezone Africa
+
+#Update System.
+sudo dnf -y update
+
+#Wait for the upgrade to complete then reboot the server.
+sudo systemctl reboot
+
+#Add the official oVirt repository:
+#Remember to add repo on additional Hosts
+sudo yum -y install https://resources.ovirt.org/pub/yum-repo/ovirt-release44.rpm
+
+#Install the cockpit ovirt dashboard package.
+sudo dnf -y install cockpit cockpit-ovirt-dashboard  gluster-ansible-roles ovirt-engine-appliance
+
+#Enable and start the service.
+sudo systemctl enable --now cockpit.socket
+
+#To enable the required ports use firewalld. The ports required in our setup will be cockpit and nfs related services.
+
+firewall-cmd --add-service=cockpit --permanent
+firewall-cmd --add-service=nfs --add-service=nfs3 --permanent
+firewall-cmd --permanent --add-service=rpc-bind --permanent
+firewall-cmd --permanent --add-service=mountd --permanent
+firewall-cmd --permanent --add-port=2049/tcp --permanent
+firewall-cmd --permanent --add-port=2049/udp --permanent
+firewall-cmd --reload
+
+#Install Ovirt Hosted engine
+
+#deploy via cmd
+dnf install ovirt-hosted-engine-setup
+
+#Install tmux
+dnf -y install tmux
+
+#run tmux - reduces chance of disconnect mid deployment
+tmux
+
+#manual command to deploy hosted engine
+hosted-engine --deploy
+---------------------------------------------------------------------------
+#Prepare storage for oVirt
+#How To Add NFS Data, ISO and engine Storage Domain to oVirt / RHEV
+#Storage Setup ( NFS )
+
+#View storage
+lsblk
+
+#Clearing disks before Raid configurations.
+for i in sdc sdd sde sdf sdg sdh; do
+  sudo wipefs -a /dev/$i
+  sudo mdadm --zero-superblock /dev/$i
+done
+
+#Create a partition on the disks and set RAID flag.
+for i in sdc sdd sde sdf sdg sdh; do
+  sudo parted --script /dev/$i "mklabel gpt"
+  sudo parted --script /dev/$i "mkpart primary 0% 100%"
+  sudo parted --script /dev/$i "set 1 raid on"
+done
+
+#Create RAID 1 device:
+sudo mdadm --create /dev/md1 --level=raid1 --raid-devices=6 /dev/sdc1 /dev/sdd1 /dev/sde1 /dev/sdf1 /dev/sdg1 /dev/sdh1
+
+#Show Raid device status:
+cat /proc/mdstat
+
+#Create filesystem on the RAID device:
+sudo mkfs.xfs /dev/md1
+
+#Create mount point:
+sudo mkdir /nfs
+
+#Configure mounting in /etc/fstab:
+echo "/dev/md1 /nfs xfs defaults 0 0" | sudo tee -a /etc/fstab
+
+#Confirm it can be mounted correctly:
+sudo mount -a
+df -hT
+------------------------------------------------------------------------------------------------------------------
+#Install NFS server packages:
+
+sudo yum -y install nfs-utils
+sudo systemctl enable --now nfs-server rpcbind
+
+#Create a system group called kvm on NFS server if it doesn’t exist already:
+getent group kvm || sudo groupadd kvm -g 36
+
+#Create the user vdsm in the group kvm
+getent passwd vdsm || sudo useradd vdsm -u 36 -g 36
+
+#Create NFS exports directories for oVirt.
+sudo mkdir -p /LocalVMstore/{data,iso,hosted_engine}
+
+#Set the ownership of your exported directories to 36:36, which gives vdsm:kvm ownership:
+sudo chown -R 36:36 /LocalVMstore/data
+sudo chown -R 36:36 /LocalVMstore/iso
+sudo chown -R 36:36 /LocalVMstore/hosted_engine
+
+#Change the mode of the directories to grant owner read and write access:
+sudo  chmod 0775 /LocalVMstore/data
+sudo  chmod 0775 /LocalVMstore/iso
+sudo  chmod 0775 /LocalVMstore/hosted_engine
+
+sudo vi /etc/exports
+
+#Configure NFS exports file like below.
+/LocalVMstore/hosted_engine 172.255.255.0/24(rw,sync)
+/LocalVMstore/data 172.255.255.0/24(rw,sync)
+/LocalVMstore/iso 172.255.255.0/24(rw,sync)
+
+#Start and enable NFS server service.
+sudo systemctl enable nfs-server
+sudo systemctl start nfs-server
+
+#Update NFS exports table.
+exportfs -a
+
+#Show mount points
+showmount -e 172.255.255.10
+
+#If you have a running Firewalld service, allow nfs services:
+sudo firewall-cmd --add-service={nfs,nfs3,rpc-bind} --permanent
+sudo firewall-cmd --reload
+
+------------------------------------------------------------------
+#Step 4: Install oVirt using the Cockpit wizard
+
+#Setup Pre- requisites:
+#FQDNs prepared for your Engine and the deployment host. 
+#Forward and reverse lookup records must both be set in the DNS.
+# Updating /etc/hosts file
+sudo yum install nano
+sudo nano /etc/hosts
+192.168.0.11 [server-fqdn]  # virtual host1
+192.168.0.12 [server-fqdn]  # virtual host2
+192.168.0.20 [server-fqdn]  # Ovirt Engine
+
+Log in to Cockpit as root at https://[Host IP or FQDN]:9090
+
+#Enter the hosted engine storage information. 
+#Use the hosted_engine NFS share to install the Ovirt Manager on it.
+#Storage Type as NFS.
+#Storage connection as [server-fqdn]:/hosted_engine
+#If you need to add more mount options we can enter the same here. 
+#Disk size = 100GiB
+
+------------------------------------------------------------------------------
+#Add additional hosts
+
+#Add the official oVirt repository:
+sudo dnf -y install https://resources.ovirt.org/pub/yum-repo/ovirt-release44.rpm
+
+#install cockpit ovirt dash
+sudo dnf -y install cockpit cockpit-ovirt-dashboard
+
+#Enable and start the service.
+sudo systemctl enable --now cockpit.socket
+
+#add firewall entry
+firewall-cmd --add-service=cockpit --permanent
+
+#reload firewall service
+firewall-cmd --reload
+
+#add host via Engine Dash, Hosts.
+
+-------------------------------------------------------------------------------
+#iSCSI Multipath
+
+#Set host to maintenance mode
+nano /etc/multipath.conf
+
+#add line to second line of file
+# VDSM PRIVATE
+
+#under devices section add (or at end of file)
+#More devices can be added
+
+devices {
+	device {
+                vendor "TrueNAS"
+                product "iSCSI Disk"
+                path_grouping_policy multibus
+                path_selector "round-robin 0"
+                rr_min_io_rq 100
+                rr_weight "uniform"
+	}
+}
+------------------------------------------------
+	device {
+                vendor COMPELNT
+                product Compellent Vol
+                path_selector "service-time 0"
+                path_grouping_policy multibus
+                path_checker tur
+                failback immediate
+                no_path_retry 3
+                rr_min_io_rq 1
+                fast_io_fail_tmo 15
+	}
+}
+------------------------------------------------
+        device {
+                vendor                 "LIO-ORG"
+                product                "virt-storage-ge"
+                hardware_handler       "1 alua"
+                path_grouping_policy   "multibus"
+                path_selector          "round-robin 0"
+                failback               immediate
+                path_checker           tur
+                prio                   alua
+                prio_args              exclusive_pref_bit
+                no_path_retry          queue
+                fast_io_fail_tmo       25
+        }
+        device {
+                vendor                 "LIO-ORG"
+                product                "backup-pool"
+                hardware_handler       "1 alua"
+                path_grouping_policy   "multibus"
+                path_selector          "round-robin 0"
+                failback               immediate
+                path_checker           tur
+                prio                   alua
+                prio_args              exclusive_pref_bit
+                no_path_retry          queue
+                fast_io_fail_tmo       25
+        }
+}
+-------------------------------------------------------
+#add additional disks /nvme wwid to blacklist
+blacklist {
+    protocol "(scsi:adt|scsi:sbp)"
+    wwid nvme.126f-4141303030303030303030303030303031313234-48532d5353442d45323030302035313247-00000001
+    wwid 36b82a720ce9bd800274ea5230a794c3f
+}
+
+#Restart mpathd
+systemctl reload multipathd.service
+
+#Reboot host
+#Activate host after reboot
+#run cmd (will not return results while host is in maitenance mode after reboot)
+multipath -ll 
+#Verify status with 
+multipath -ll
+
+-------------------------------------------------------------------------------------------
+#oVirt Power Management with iDRAC5
+
+#Compute > Hosts > targetHost > set to maintenance mode
+#Select enable power management
+#Host Power Managment menu
+#Address:  [iDRAC IP]
+#Username:  [yourAdmin]
+#Password:  [yourPW]
+#Type:  drac5
+#Slot:  <empty>
+#Options:  cmd_prompt=admin1->,login_timeout=10
+#Secure:  enabled
+#Test connection
+#Activate host
+
+--------------------------------------------------------------------------------------------
+#Installing the Guest Agents and Drivers on Enterprise Linux
+
+#For Enterprise Linux 7
+subscription-manager repos --enable=rhel-7-server-rh-common-rpms
+#For Enterprise Linux 6 or 7, install the ovirt guest agent
+sudo yum -y install ovirt-guest-agent-common
+
+#For Enterprise Linux 8
+subscription-manager repos --enable=rhel-8-for-x86_64-appstream-rpms
+#For Enterprise Linux 8, install the qemu guest agent:
+sudo yum -y install qemu-guest-agent
+
+#Install oVirt Guest agent on Ubuntu 20.04 | Ubuntu 18.04
+sudo apt -y update
+sudo apt-get -y install qemu-guest-agent
+or
+sudo apt-get install -y ovirt-guest-agent
+---------------------------------------------------------------------------------------------
+#run ovirt engine backup from hosted engine
+engine-backup
+
+#backup is stored in local dir on engine (scp and download to other storage)
+ls /var/lib/ovirt-engine-backup/
+
+----------------------------------------------------------------------------------------------
+#check/troubleshoot engine VM
+hosted-engine --check-deployed
+
+#if deployed check vm status
+hosted-engine --vm-status
+
+#Start engine vm if down
+hosted-engine --vm-start
+
+

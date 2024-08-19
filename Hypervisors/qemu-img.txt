@@ -1,0 +1,5 @@
+#Check disk class
+qemu-img info /path/to/the/disk
+
+#Testing disk images on file store
+qemu-img create -f qcow2 -o cluster_size=64k,preallocation=metadata,compat=1.1,lazy_refcounts=on testvm.qcow2 10G

@@ -1,0 +1,154 @@
+#Important Packages and Their Installation
+sudo yum install -y mstflint rdma-core opensm ibutils infiniband-diags perftest
+sudo yum -y groupinstall "InfiniBand Support"
+
+lspci | grep Mellanox
+05:00.0
+
+#Query the device’s parameters LINK_TYPE_P1
+mstconfig -d 05:00.0 q
+
+#Use mstconfig to change the link type as desired IB – for InfiniBand, ETH – for Ethernet.
+mstconfig -d 05:00.0 s LINK_TYPE_P1=ETH
+
+#Setting up SR-IOV
+mstconfig -d 01:00.0 s SRIOV_EN=True
+
+#config nr VFs
+mstconfig -d 01:00.0 s NUM_OF_VFS=8
+
+#Create Dir for mlx4 device
+mkdir -p /sys/kernel/config/rdma_cm/mlx4_0/
+
+#Validate what is the used RoCE mode in the default_roce_mode configfs file.
+cat /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode 
+#IB/RoCE v1
+
+#Change the default RoCE mode,
+# For RoCE v1: IB/RoCE v1
+# For RoCE v2: RoCE v2 
+
+echo "RoCE v2" > /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode # cat /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode
+#RoCE v2
+
+echo "IB/RoCE v1" > /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode # cat /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode
+#IB/RoCE v1
+
+#Display the rdma links on the system:
+rdma link show
+
+#list the available RDMA devices in the system:
+ibv_devices
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+#This section describes how to configure Soft-RoCE.
+
+#Install the iproute libibverbs, libibverbs-utils, and infiniband-diags packages:
+sudo yum -y install iproute libibverbs libibverbs-utils infiniband-diags
+
+#Display the rdma links on the system:
+rdma link show
+
+#Load the rdma_rxe kernel module and add new RXE device:
+#rxe0 specifies the name of the rdma link to add.
+#rxe specifies the rdma type to use.
+#netdev specifies the network device to which the link is bound.
+rdma link add rxe0 type rxe netdev eth0
+
+#View the state of all rdma links on the system:
+rdma link show
+
+#list the available RDMA devices in the system:
+ibv_devices
+
+#Alternatively, use the ibstat utility to display a detailed status (device name = rxe0, per ibv_devices)
+ibstat rxe0
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+#Memory pinning
+
+#As the root user, create the /etc/security/limits.d/rdma.conf file with the following content:
+sudo nano /etc/security/limits.d/rdma.conf
+@rdma    soft    memlock     unlimited
+@rdma    hard    memlock     unlimited
+
+#Use the ulimit -l command to display the limit:
+ulimit -l
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+#Testing an RDMA
+#Turn off firewall on server side or add exceptions
+#TCP port 21455,18515,19765 and UDP ports 4791,21451,21452,18515
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+#Udaddy
+#run udaddy server
+udaddy
+
+#Run the following command on the second server (act as a client)
+udaddy -s 172.255.249.10
+
+#"return status=0" means good exit (RDMA is running).
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+#rdma_server and rdma_client commands:
+
+#Run the following command on one server (act as a server):
+rdma_server
+
+#Run the following command on the second server (act as a client)
+rdma_client -s 172.255.249.10
+
+#"rdma_client: end 0" means good exit (RDMA is running).
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Run the following on one of the servers (act as a rping server)
+rping -s -C 10 -v
+
+#Run the following on one of the servers (act as a rping client)
+rping -c -a 172.255.249.10 -C 10 -v
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ucmatose
+#Run the following on one of the servers (act as a server)
+ucmatose
+
+#Run the following on the other server (act as a client)
+ucmatose -s 172.255.249.10
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ib_send_bw (performance test)
+
+#Run the following command on one server (act as a server):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits
+
+#Run the following command on the second server (act as a client):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits 172.255.249.10
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#qperf Bandwidth test
+
+#Run the following on one of the servers (act as a server)
+qperf
+
+#Run the following on client. Use "-cm1" for RoCE, "-t 60" test over 60 seconds.
+qperf -cm1 -t 60 --use_bits_per_sec 172.255.249.10 rc_bw
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Installing the OpenSM subnet manager
+#When working with RDMA applications over Ethernet link layer the following points should be noted: 
+#The presence of a Subnet Manager (SM) is not required in the fabric.
+
+yum install opensm
+
+#Enable and start the opensm service:
+sudo systemctl enable --now opensm
+
+#This section describes how to configure OpenSM if you do not need any customized settings
+#Obtain the GUIDs for the ports using the ibstat utility:
+ibstat -d mlx4_0
+
+#Edit the /etc/sysconfig/opensm file and set the GUIDs in the GUIDS parameter:(GUIDS="GUID_1 GUID_2")
+GUIDS="0x26be05fffeb24051 0x26be05fffeb24052"
+
+#Optionally, set the PRIORITY parameter if multiple subnet managers are available in your subnet. For example:
+PRIORITY=15
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
