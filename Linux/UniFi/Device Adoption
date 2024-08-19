@@ -1,0 +1,15 @@
+If you can SSH into the AP, it's possible to do L3-adoption via CLI command:
+1. Make sure the AP is running updated firmware. If it is not, see this guide: UniFi - Changing the Firmware of a UniFi Device.
+2. Make sure the AP is in factory default state. If it's not, do:
+sudo syswrapper.sh restore-default
+3. SSH into the device and type the following and hit enter:
+set-inform http://[public-dns]:8080/inform
+4. After issuing the set-inform, the UniFi device will show up for adoption. Once you click adopt, the device will appear to go offline.
+5. Once the device goes offline, issue the command set-inform in step 3 again. This will permanently save the inform address, and the device will start provisioning.
+	
+	NOTE:
+The set-inform command must be issued twice. Otherwise, the device will disconnect after appearing to adopt. The process to be followed is:
+1. Issue the command set-inform in step 3 above.
+2. The device will appear ready for adoption in the Controller. Click Adopt.
+3. Wait for the 'Adopting' status to appear on the UniFi Controller, then issue the set-inform command again.
+4. The device should now change to a 'Provisioning' status and then connect shortly thereafter.
