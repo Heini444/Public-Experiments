@@ -1,0 +1,51 @@
+#install Podman Compose (Same as docker Compose)
+pip3 install podman-compose
+or
+pip3 install https://github.com/containers/podman-compose/archive/devel.tar.gz
+or
+sudo dnf install podman-compose -y
+
+#Make Directory using mkdir ~/[pod name]
+mkdir ~/server.media
+
+#Create yml file, touch ~/[pod name]/[pod name].yml
+touch ~/server.media/server-media-web.yml
+
+#install nano
+sudo yum install nano -y
+
+#Brows to docker website for example compose of wordpress
+https://docs.docker.com/compose/wordpress/
+
+#edit yml file, copy contents from above compose yml file
+nano ~/server.media/bas-media-web.yml
+
+#compose -t (transform in pod) "1podfw" (makes 1 pod) -f (file location) up (tells pod to go online) -d (detached mode)
+podman-compose -t 1podfw -f ~/server.media/server-media-web.yml up -d
+
+#view containers
+podman ps -a
+
+#view pods
+podman pod list
+
+#open below url in browser to view wordpress site
+http://localhost:8000
+
+podman pod stop compose
+
+podman ps -a
+
+podman pod start compose
+
+podman ps -a
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+##Podman Networking:
+1podfw - create all containers in one pod (inter-container communication is done via localhost), doing port mapping in that pod
+1pod - create all containers in one pod, doing port mapping in each container (does not work)
+identity - no mapping
+hostnet - use host network, and inter-container communication is done via host gateway and published ports
+cntnet - create a container and use it via --network container:name (inter-container communication via localhost)
+publishall - publish all ports to host (using -P) and communicate via gateway

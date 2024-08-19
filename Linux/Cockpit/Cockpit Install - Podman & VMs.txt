@@ -1,0 +1,52 @@
+sudo yum update -y
+
+#Install Cockpit
+sudo yum install -y cockpit cockpit-packagekit cockpit-storaged cockpit-dashboard cockpit-networkmanager
+
+#Optional Cockpit Packages
+sudo yum install -y cockpit-machines cockpit-podman
+
+#Enable Cockpit service
+systemctl enable --now cockpit.socket
+
+#Add the firewall rules to allow Cockpit to communicate 
+sudo firewall-cmd --permanent --add-service=cockpit
+sudo firewall-cmd --reload
+
+#Install nano
+sudo yum install -y nano
+------------------------------------------
+#Add Podman, under applications
+#enable/start podman automatically
+------------------------------------------
+#VMs
+sudo yum groupinstall "Virtualization Hypervisor" -y
+sudo yum groupinstall "Virtualization Client" -y
+sudo yum groupinstall "Virtualization Platform" -y
+sudo yum groupinstall "Virtualization Tools" -y
+or
+#install Qemu and required tools
+sudo yum install -y qemu-kvm-tools virt-top libguestfs-tools libguestfs-tools-c fenc-virtd-libvirt fence-virtd-multicast fence-virtd-serial libvirt-cim libvirt-java libvirt-snmp perl-Sys-Virt libguestfs-java libguestfs-tools libguestfs-tools-c
+
+#install API
+sudo yum install -y libvirt-dbus
+
+#enable libvert service
+systemctl enable --now libvirtd
+
+#check status of limvert service
+systemctl status libvirtd
+
+#Look for kernal module KVM
+lsmod | grep kvm
+
+##Nested virtualization is enabled until the host is rebooted. 
+##To enable it permanently, add the following line to the /etc/modprobe.d/kvm.conf file:
+options kvm_intel nested=1
+
+#Attach a disk image to a guest's CD-ROM drive:
+virsh attach-disk container-host1 /opt/ISO/Fedora-Server-netinst-x86_64-33-1.2.iso hdc --type cdrom --mode readonly
+
+virsh qemu-monitor-command container-host1 --hmp --cmd "eject drive-scsi0-0-1"
+
+virsh qemu-monitor-command container-host1 --hmp --cmd "change drive-sata0-0-0 /opt/ISO/Fedora-Server-netinst-x86_64-33-1.2.iso"

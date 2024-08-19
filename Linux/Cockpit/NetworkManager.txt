@@ -1,0 +1,26 @@
+#Display overall status of NetworkManager
+nmcli general status
+
+#Display active connections
+nmcli connection show --active
+
+#Display all configured connections
+nmcli connection show configured
+
+#Connect to a configured connection by name
+nmcli connection up id <connection name>
+
+#Disconnection by name
+nmcli connection down id <connection name>
+
+#List available devices and their status
+nmcli device status
+
+#Disconnect an interface
+nmcli device disconnect iface <interface>
+
+#update repo sources
+sudo dnf update -y
+
+#install NetworkManager gui 
+sudo dnf install NetworkManager-tui
