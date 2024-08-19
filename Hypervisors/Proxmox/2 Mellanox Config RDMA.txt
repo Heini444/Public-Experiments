@@ -1,0 +1,133 @@
+#https://community.mellanox.com/s/article/howto-install-mlnx-ofed-driver
+#Download drivers 18.04
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-4.0.8.0/MLNX_OFED_LINUX-4.9-4.0.8.0-ubuntu18.04-x86_64.tgz
+#Download drivers 20.04
+sudo wget https://content.mellanox.com/ofed/MLNX_OFED-4.9-3.1.5.0/MLNX_OFED_LINUX-4.9-3.1.5.0-ubuntu20.04-x86_64.tgz
+
+#Uncompress the tar file
+tar -xvf MLNX_OFED_LINUX-4.9-3.1.5.0-ubuntu20.04-x86_64.tgz && rm MLNX_OFED_LINUX-4.9-3.1.5.0-ubuntu20.04-x86_64.tgz
+
+#change dir
+cd MLNX_OFED_LINUX-4.9-3.1.5.0-ubuntu20.04-x86_64/
+
+#Note: Before you install MLNX_OFED review the various of installation options
+./mlnxofedinstall --force
+
+#Restart the driver
+/etc/init.d/openibd restart
+
+#Get the PCI address of the mellanox card.
+lspci|grep -i Mellanox
+#Note the PCI address e.g. – 24:00.0
+
+#Query the device’s parameters LINK_TYPE_P1
+mstconfig -d 24:00.0 q
+
+#Use mstconfig to change the link type as desired IB – for InfiniBand, ETH – for Ethernet.
+mstconfig -d 01:00.0 s LINK_TYPE_P1=ETH
+
+#Setting up SR-IOV
+mstconfig -d 01:00.0 s SRIOV_EN=True
+
+#config nr VFs
+mstconfig -d 01:00.0 s NUM_OF_VFS=8
+
+---------------------------------------------------------------------------------
+##run install with Option to rebuild for OS, IF REQUIRED###
+./mlnxofedinstall -vvv --add-kernel-support --distro RHEL8.4 --without-fw-update
+---------------------------------------------------------------------------------
+
+#Create Dir for mlx4 device
+sudo mkdir -p /sys/kernel/config/rdma_cm/mlx4_0/
+
+#Validate what is the used RoCE mode in the default_roce_mode configfs file.
+sudo cat /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode
+#IB/RoCE v1
+
+#run below command to check RDMA
+rdma link show
+
+#list the available RDMA devices in the system:
+ibv_devices
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+#Testing an RDMA
+#Turn off firewall on server side or add exceptions
+#TCP port 21455,18515,19765 and UDP ports 4791,21451,21452,18515
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+#Udaddy
+#run udaddy server
+udaddy
+
+#Run the following command on the second server (act as a client)
+udaddy -s 172.255.249.10
+
+#"return status=0" means good exit (RDMA is running).
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+#rdma_server and rdma_client commands:
+
+#Run the following command on one server (act as a server):
+rdma_server
+
+#Run the following command on the second server (act as a client)
+rdma_client -s 172.255.249.10
+
+#"rdma_client: end 0" means good exit (RDMA is running).
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Run the following on one of the servers (act as a rping server)
+rping -s -C 10 -v
+
+#Run the following on one of the servers (act as a rping client)
+rping -c -a 172.255.249.10 -C 10 -v
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ucmatose
+#Run the following on one of the servers (act as a server)
+ucmatose
+
+#Run the following on the other server (act as a client)
+ucmatose -s 172.255.249.10
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ib_send_bw (performance test)
+
+#Run the following command on one server (act as a server):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits
+
+#Run the following command on the second server (act as a client):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits 172.255.249.10
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+#qperf Bandwidth test
+sudo apt install qperf
+
+#Run the following on one of the servers (act as a server)
+qperf
+
+#Run the following on client. Use "-cm1" for RoCE, "-t 60" test over 60 seconds.
+qperf -cm1 -t 60 --use_bits_per_sec 172.255.249.10 rc_bw
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#Load the rdma_rxe kernel module and add new RXE device:
+
+rdma link add rxe0 type rxe netdev eth0
+
+#where,
+#rxe0 specifies the name of the rdma link to add.
+#rxe specifies the rdma type to use.
+#netdev specifies the network device to which the link is bound.
+
+#Alternatively, use the ibstat utility to display a detailed status:
+ibstat mlx4_0
+
+#check Global Pause Flow Control
+ethtool -a enp5s0
+
+#In case it is disabled, run:
+ethtool -A enp5s0 rx on tx on
+
+#Important, make sure that Global Pause Flow Control is enabled on the switch as well on the relevant ports.
+#in case it is a mellanox switch (MLNX-OS) use the following command to enable it
+switch (config) # interface ethernet 1/1 flowcontrol receive on force
+switch (config) # interface ethernet 1/1 flowcontrol send on force
+

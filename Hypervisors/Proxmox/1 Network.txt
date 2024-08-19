@@ -1,0 +1,141 @@
+#edit network cfg (Linux)
+nano /etc/network/interfaces
+
+----------------------------------------
+auto lo
+iface lo inet loopback
+
+auto eno1
+iface eno1 inet manual
+
+auto eno2
+iface eno2 inet manual
+
+auto eno3
+iface eno3 inet manual
+
+auto eno4
+iface eno4 inet manual
+
+#SAN2
+
+auto enp5s0f1
+iface enp5s0f1 inet static
+        address 172.255.249.13/24
+#SAN1
+
+auto enp5s0f0
+iface enp5s0f0 inet static
+        address 172.255.248.13/24
+
+#Bond interfaces for cluster traffic
+auto bond0
+iface bond0 inet manual
+        bond-slaves eno1 eno2
+        bond-miimon 100
+        bond-mode balance-xor
+        bond-xmit-hash-policy layer2
+
+#Bridge interfaces for cluster traffic
+auto vmbr0
+iface vmbr0 inet static
+        address 192.168.255.13/24
+        gateway 192.168.255.1
+        bridge-ports bond0
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 2-4094
+
+#Bond interfaces for VM/CT traffic resilliance
+auto bond1
+iface bond1 inet manual
+        bond-slaves eno3 eno4
+        bond-miimon 100
+        bond-mode balance-xor
+        bond-xmit-hash-policy layer2
+
+#Bridge interfaces for VM/CT traffic
+auto vmbr1
+iface vmbr1 inet static
+        bridge-ports bond1
+        bridge-stp off
+        bridge-fd 0
+        bridge-vlan-aware yes
+        bridge-vids 2-4094
+-----------------------------------------
+#update hosts file
+nano /etc/hosts
+
+192.168.255.12 [server-fqdn] [hostname]
+192.168.255.11 [server-fqdn] [hostname]
+192.168.255.13 [server-fqdn] [hostname]
+
+-----------------------------------------
+# Open V Switch CFG
+apt update
+apt install openvswitch-switch -y
+
+#edit network cfg
+nano /etc/network/interfaces
+
+-----------------------------------------
+# Loopback interface
+auto lo
+iface lo inet loopback
+
+#SAN2
+
+auto enp5s0f1
+iface enp5s0f0 inet static
+        address 172.255.249.13/24
+#SAN1
+
+auto enp5s0f1
+iface enp5s0f0 inet static
+        address 172.255.248.13/24
+
+#Define eno1 eno2
+auto eno1
+iface eno1 inet manual
+
+auto eno2
+iface eno2 inet manual
+
+# Bond nic eno1 eno2 together
+allow-vmbr0 bond0
+iface bond0 inet manual
+        ovs_bridge vmbr0
+        ovs_type OVSBond
+        ovs_bonds eno1 eno2
+        ovs_options bond_mode=balance-slb vlan_mode=native-untagged
+
+# Bridge for our bond and vlan virtual interfaces (our VMs attach to this bridge)
+auto vmbr0
+allow-ovs vmbr0
+iface vmbr0 inet manual
+        ovs_type OVSBridge
+        ovs_ports bond0 vlan1
+
+# Virtual interface untagged traffic
+allow-vmbr0 vlan1
+iface vlan1 inet static
+        ovs_type OVSIntPort
+        ovs_bridge vmbr0
+        ovs_options vlan_mode=access
+#        ovs_extra set interface ${IFACE} external-ids:iface-id=$(hostname -s)-${IFACE}-vif
+        address 192.168.255.13
+        netmask 255.255.255.0
+        gateway 192.168.255.1
+        dns-nameservers 192.168.255.1
+
+# Ceph cluster communication vlan (jumbo frames)
+auto vlan55
+iface vlan55 inet static
+  ovs_type OVSIntPort
+  ovs_bridge vmbr0
+  ovs_options tag=55
+  address 10.55.10.44
+  netmask 255.255.255.0
+  ovs_mtu 9000
+-----------------------------------------

@@ -1,0 +1,147 @@
+#install MSTFLINT
+apt-get install mstflint -y
+
+#Get the PCI address of the mellanox card.
+lspci|grep -i Mellanox
+#Note the PCI address e.g. – 24:00.0
+
+#Query the device’s parameters LINK_TYPE_P1
+mstconfig -d 05:00.0 q
+
+##Get the PCI address of Intel X550 10Gbit card
+lspci|grep -i x550
+#Note the PCI address e.g. – 19:00.0 and 19:00.1
+
+----------------------------------------------------------------------------------------
+#Use mstconfig to change the link type as desired IB – for InfiniBand, ETH – for Ethernet.
+mstconfig -d 05:00.0 s LINK_TYPE_P1=ETH
+
+#Setting up SR-IOV
+mstconfig -d 05:00.0 s SRIOV_EN=True
+
+#config nr VFs
+mstconfig -d 05:00.0 s NUM_OF_VFS=8
+----------------------------------------------------------------------------------------
+
+#Create Dir for mlx4 device
+mkdir -p /sys/kernel/config/rdma_cm/mlx4_0/
+
+#Validate what is the used RoCE mode in the default_roce_mode configfs file.
+cat /sys/kernel/config/rdma_cm/mlx4_0/ports/1/default_roce_mode
+#IB/RoCE v1
+
+#This step installs user space libraries and diagnostic applications that will allow testing #of RDMA functionality
+apt update
+
+apt-get install libibverbs1 librdmacm1 \
+libibmad5 libibumad3 librdmacm1 ibverbs-providers rdmacm-utils \
+infiniband-diags libfabric1 ibverbs-utils
+
+#Install rdma core package
+apt-get install rdma-core -y
+
+#list the available RDMA devices in the system:
+ibv_devices
+
+#show mlx packages
+lsmod | grep mlx
+
+#run below command to check RDMA
+rdma link show
+
+#Alternatively, use the ibstat utility to display a detailed status:
+ibstat mlx4_0
+
+#Verify Loaded Kernal modules for RDMA
+lsmod | grep '\(^ib\|^rdma\)'
+
+#Modules that should appear for any host, assuming default config of rdma-core:
+rdma_ucm
+ib_uverbs
+ib_iser
+rdma_cm
+ib_umad
+ib_ipoib
+ib_cm
+ib_core
+----------------------------------------------------------------------------------------
+#check Global Pause Flow Control
+ethtool -a ens5
+
+#In case it is disabled, run:
+ethtool -A ens5 rx on tx on
+----------------------------------------------------------------------------------------
+
+#Testing an RDMA
+#Turn off firewall on server side or add exceptions
+#TCP port 21455,18515,19765 and UDP ports 4791,21451,21452,18515
+----------------------------------------------------------------------------------------
+#Udaddy
+#run udaddy server
+udaddy
+
+#Run the following command on the second server (act as a client)
+udaddy -s 172.255.249.8
+
+#"return status=0" means good exit (RDMA is running).
+
+----------------------------------------------------------------------------------------
+#rdma_server and rdma_client commands:
+
+#Run the following command on one server (act as a server):
+rdma_server
+
+#Run the following command on the second server (act as a client)
+rdma_client -s 172.255.249.8
+
+#"rdma_client: end 0" means good exit (RDMA is running).
+----------------------------------------------------------------------------------------
+#Run the following on one of the servers (act as a rping server)
+rping -s -C 10 -v
+
+#Run the following on one of the servers (act as a rping client)
+rping -c -a 172.255.249.8 -C 10 -v
+----------------------------------------------------------------------------------------
+#ucmatose
+#Run the following on one of the servers (act as a server)
+ucmatose
+
+#Run the following on the other server (act as a client)
+ucmatose -s 172.255.249.8
+----------------------------------------------------------------------------------------
+#ib_send_bw (performance test)
+
+#Run the following command on one server (act as a server):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits
+
+#Run the following command on the second server (act as a client):
+ib_send_bw -d mlx4_0 -i 1 -F --report_gbits 172.255.249.8
+
+----------------------------------------------------------------------------------------
+#qperf Bandwidth test
+apt install qperf
+
+#Run the following on one of the servers (act as a server)
+qperf
+
+#Run the following on client. Use "-cm1" for RoCE, "-t 60" test over 60 seconds.
+qperf -cm1 -t 60 --use_bits_per_sec 172.255.249.8 rc_bw
+
+----------------------------------------------------------------------------------------
+
+#Load the rdma_rxe kernel module and add new RXE device:
+
+rdma link add rxe0 type rxe netdev eth0
+
+#where,
+#rxe0 specifies the name of the rdma link to add.
+#rxe specifies the rdma type to use.
+#netdev specifies the network device to which the link is bound.
+
+#Alternatively, use the ibstat utility to display a detailed status:
+ibstat mlx4_0
+
+#Important, make sure that Global Pause Flow Control is enabled on the switch as well on the relevant ports.
+#in case it is a mellanox switch (MLNX-OS) use the following command to enable it
+switch (config) # interface ethernet 1/1 flowcontrol receive on force
+switch (config) # interface ethernet 1/1 flowcontrol send on force

@@ -1,0 +1,145 @@
+#iSCSI Host/target setup
+## This file lists initiator name
+cat /etc/iscsi/initiatorname.iscsi
+
+#Install open-iscsi
+apt install open-iscsi
+
+#add firewall entry for iscsi
+tcp:3260
+
+#Run iscsiadm to discover the target 
+iscsiadm -m discovery -t st -p 172.255.249.8:3260
+
+#Show discovered iSCSI nodes
+iscsiadm --m node
+
+#and change the transport mode to iser
+iscsiadm -m node -T iqn.2021-12.[reverse-fqdn]:virt-storage-vm -o update -n iface.transport_name -v iser
+
+#Update your iSCSI configuration to start all required iSCSI connections at boot time.
+#IF using AUTHENTICATION - Reduce the complexity of CHAP: Strip-out the special characters. 
+#On the initiator, add password to auth with target storage.
+nano /etc/iscsi/iscsid.conf
+-----------------------------------------------------------------
+#*****************
+# Startup settings
+#*****************
+
+# To request that the iscsi initd scripts startup a session set to "automatic".
+node.startup = automatic
+#
+# To manually startup the session set to "manual". The default is manual.
+#node.startup = manual
+
+# To enable CHAP authentication set node.session.auth.authmethod
+# to CHAP. The default is None.
+node.session.auth.authmethod = CHAP
+
+# To configure which CHAP algorithms to enable set
+# node.session.auth.chap_algs to a comma seperated list.
+# The algorithms should be listen with most prefered first.
+# Valid values are MD5, SHA1, SHA256
+# The default is MD5.
+# node.session.auth.chap_algs = SHA256,SHA1,MD5
+
+# To set a CHAP username and password for initiator
+# authentication by the target(s), uncomment the following lines:
+node.session.auth.username = virt
+node.session.auth.password = password
+
+# To set a CHAP username and password for target(s)
+# authentication by the initiator, uncomment the following lines:
+#node.session.auth.username_in = dbuser
+#node.session.auth.password_in = Password
+
+# To enable CHAP authentication for a discovery session to the target
+# set discovery.sendtargets.auth.authmethod to CHAP. The default is None.
+#discovery.sendtargets.auth.authmethod = CHAP
+
+# To set a discovery session CHAP username and password for the initiator
+# authentication by the target(s), uncomment the following lines:
+#discovery.sendtargets.auth.username = username
+#discovery.sendtargets.auth.password = password
+
+# To set a discovery session CHAP username and password for target(s)
+# authentication by the initiator, uncomment the following lines:
+#discovery.sendtargets.auth.username_in = username_in
+#discovery.sendtargets.auth.password_in = password_in
+
+# ********
+# Timeouts
+# ********
+#
+# See the iSCSI README's Advanced Configuration section for tips
+# on setting timeouts when using multipath or doing root over iSCSI.
+#
+# To specify the length of time to wait for session re-establishment
+# before failing SCSI commands back to the application when running
+# the Linux SCSI Layer error handler, edit the line.
+# The value is in seconds and the default is 120 seconds.
+# Special values:
+# - If the value is 0, IO will be failed immediately.
+# - If the value is less than 0, IO will remain queued until the session
+# is logged back in, or until the user runs the logout command.
+node.session.timeo.replacement_timeout = 30
+
+# The time to wait for an iSCSI login to complete. The value is in seconds and the default is 15.
+node.conn[0].timeo.login_timeout = 15
+
+# To specify the time to wait for logout to complete, edit the line.
+# The value is in seconds and the default is 15 seconds.
+node.conn[0].timeo.logout_timeout = 15
+
+# Time interval to wait for on connection before sending a ping.
+node.conn[0].timeo.noop_out_interval = 5
+
+# To specify the time to wait for a Nop-out response before failing
+# the connection, edit this line. Failing the connection will
+# cause IO to be failed back to the SCSI layer. If using dm-multipath
+# this will cause the IO to be failed to the multipath layer.
+node.conn[0].timeo.noop_out_timeout = 5
+
+# This retry count along with node.conn[0].timeo.login_timeout
+# determines the maximum amount of time iscsid will try to
+# establish the initial login. node.session.initial_login_retry_max is
+# multiplied by the node.conn[0].timeo.login_timeout to determine the
+# maximum amount.
+node.session.initial_login_retry_max 8
+
+----------------------------------------------------------------
+#restart iscsi service
+systemctl restart iscsid.service
+
+#Show discovered iSCSI nodes
+iscsiadm --m node
+
+#This utility manages to attach an iSCSI target to the session. Attach the iSCSI target
+iscsiadm --mode node --targetname <IQN> -p <IP> --login
+iscsiadm --m node -T iqn.2021-12.[reverse-fqdn]:virt-storage-vm -p 172.255.249.8 --login
+
+#Show active sessions
+iscsiadm --m session
+
+#list block devices
+lsblk
+
+#list scsi devices
+lsscsi
+----------------------------------------------------------------
+#determine active sessions sessions
+iscsiadm -m session
+
+#log out
+iscsiadm -m node -T iqn.2021-12.[reverse-fqdn]:virt-storage-vm --logout
+iscsiadm -m node -T iqn.[reverse-fqdn]:virt-storage-db --logout
+
+#delete
+iscsiadm -m node -T iqn.2021-12.[reverse-fqdn]:virt-storage-vm --op=delete
+-------------------------------------------------------------------------------------------
+#Run fio command (or similar) to test the link bandwidth
+
+fio --rw=read --bs=128k --numjobs=1 --iodepth=4 --size="200m" --loops=1 --ioengine=libaio --direct=1 --invalidate=1 --fsync_on_close=1 --randrepeat=1 --norandommap --exitall --name "test1" --filename="/dev/sdj" --output=/tmp/fio_verify.sh-22334.log --time_based --runtime=305
+
+fio --filename="/dev/mapper/mpatha" --sync=1 --rw=randwrite --bs=4k --direct=1 --numjobs=4 --iodepth=32 --group_reporting --name=test --runtime=180 && rm mirror
+-------------------------------------------------------------------------------------------

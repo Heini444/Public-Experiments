@@ -1,0 +1,14 @@
+# Host Firewall
+ProxmoxWeb 8006 (TCP)
+SSH 22 (TCP,UDP,SCTP)
+ICMP
+
+# Storage
+nfs 2049(TCP and UDP) 
+nfs3 111 (TCP and UDP) 
+rpc-bind 111 (TCP and UDP)
+
+
+# RDMA
+#TCP port 21455 18515 19765
+#UDP ports 4791,21451,21452,18515
