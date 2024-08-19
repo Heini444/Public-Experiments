@@ -1,0 +1,71 @@
+#boot to bios mode
+#show mapped drives, if in uefi
+map -b
+
+#type drive mapping, if in uefi
+fs0:
+
+#view files in dir, if in uefi
+ls
+
+#Identify the card you want to flash
+Megarec -adplist
+#Should return you a list of all the LSI based card detected. If you only have one card the id# of the card will most likely be 0.
+
+megacli adpallinfo -A0
+
+#Save your current SBR to backup SBR just in case...
+Megarec -readsbr 0 backup.sbr
+
+#Reflash the SBR with the version you want:
+megarec -writesbr 0 EMPTY.BIN 
+
+#Empty the BIOS:
+megarec -cleanflash 0
+
+#Reboot the computer and boot from the flash drive again. Your RAID card BIOS will not load. That is normal, you just wiped it clean.
+megarec -writesbr 0 2118it.bin
+
+#Flash the Firmware back:
+#where XXX is the name of your rom file downloaded for the card of your choice. This will take a little while.
+megarec -m0flash 0 mptsas2.rom 
+
+#possible to flash a M5015 into a 9260 and then a H700 this way. 
+#Found out that the H700 performs a little better than the others. 
+#No SBR file for the intel card however.
+
+Megarec -m0flash 0 FW1405IA.rom    (H700 Integrated ROM update file downloaded from Dell website)
+Megarec -writesbr 0 H700INT.SBR        (SBR from our H700 Int.)
+Megarec -writespd 0 H700INT.SPD        (SPD from our H700 Int.) 
+Reboot
+
+--------------------------------------------------
+#Save original sbr (serial boot rom) by typing:
+
+megarec -readsbr 0 backup.sbr (put this backup in a safe place once you're done with the whole process)
+
+#Write an empty sbr file to controller:
+
+megarec -writesbr 0 empty.bin
+
+#Erase controller flash:
+
+megarec -cleanflash 0
+
+#Reboot PC back into USB drive.
+
+#Set controller to 6GB/s mode:
+
+sas2flsh -o -e 6
+
+#This will then ask for a firmware version, this is the same name as the updated .bin file:
+
+2118it.bin
+
+#Flash the controller to new firmware with IT-mode:
+
+sas2flsh -o -f 2118it.bin -b mptsas2.rom
+
+#Program SAS address in IT-mode where 500605b********* is the code on the green sticker on your RAID card without the "-":
+
+sas2flsh -o -sasadd 500605b*********

@@ -1,0 +1,53 @@
+#check OS version
+cat /etc/os-release
+
+#fdisk display
+sudo fdisk -l
+
+#display sector size
+cat /sys/block/sda/queue/hw_sector_size
+
+#view mount points
+sudo lvmdiskscan -l
+
+#Display LVM volumes
+sudo vgdisplay -v
+
+#disk labels
+sudo lsblk
+
+#Display LVM volumes
+sudo vgdisplay -v
+
+#run partition manager
+parted
+
+#view partitions
+print
+-----------------------------------------------
+
+udisksctl unlock -b /dev/sdb5
+sudo mkdir /mnt/data
+sudo mount /dev/dm-1 /mnt/data
+run into mount: unknown filesystem type 'LVM2_member' do the commands below
+
+sudo bash
+vgdisplay
+vgrename <VG UUID> new_name
+modprobe dm-mod
+vgchange -ay
+lvscan
+mount /dev/new_name/root /mnt/data/
+
+#Cluster size L2 https://www.ibm.com/cloud/blog/how-to-tune-qemu-l2-cache-size-and-qcow2-cluster-size
+#Check disk class
+qemu-img info /path/to/the/disk
+
+#Testing disk images on file store
+qemu-img create -f qcow2 -o cluster_size=64k,preallocation=metadata,compat=1.1,lazy_refcounts=on template.qcow2 10G
+
+#convert qcow to extended L2
+mv template.qcow2 template.qcow2.bak
+qemu-img convert -O qcow2 -o cluster_size=128k,extended_l2=on template.qcow2.bak
+
+qemu-img convert -f qcow2 [path/image-name] -O qcow2 -o cluster_size=4k template.qcow2

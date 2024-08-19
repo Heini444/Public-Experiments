@@ -1,0 +1,70 @@
+#https://github.com/TigerOnVaseline/ata-secure-erase
+#script alternative
+wget "https://chromium.googlesource.com/chromiumos/platform2/+/master/secure-wipe/secure-wipe.sh"
+sudo chmod 755 secure-wipe.sh
+
+#First check if secure erase is supported: (replace sdX with sda/sdb/sdc, whatever your disk is).
+sudo hdparm -I /dev/sdd | grep -i security
+
+#If you see no output, just use dd:
+sudo dd if=/dev/zero of=/dev/sdX bs=1M
+
+#If you see output, check if the device is not frozen:
+sudo hdparm -I /dev/sdd | grep -i frozen
+
+#If it is frozen, see How to unfreeze drive in Linux? Otherwise if you see not frozen, set password to "Eins":
+sudo hdparm --user-master u --security-set-pass Eins /dev/sdd
+
+#Optional: you might want to know how how long this will take:
+sudo hdparm -I /dev/sda | awk '/for SECURITY ERASE UNIT/'
+
+#Then execute the erase:
+sudo hdparm --user-master u --security-erase Eins /dev/sdd
+
+#Then wait. Apparently for a 1TB disk this might take 3 hours or more.
+-----------------------------------------------------------------------------------------------------------------
+#check smart data
+smartctl -a /dev/nvme0
+
+#secure-erase NVME, install utility
+apt install nvme-cli
+
+#show nvme devices
+nvme list
+
+#format device
+sudo nvme format -s1 <device>
+
+#show nvme devices
+nvme list
+
+#change sector size
+nvme format -b 4096
+
+For NVMe disks on Linux, you can find out this size with the nvme-cli [0] tool. 
+Use "nvme id-ctrl" to find the Maximum Data Transfer Size (MDTS) in disk (LBA) blocks 
+and "nvme id-ns" to find the LBA Data Size (LBADS). The value is then 2^MDTS * 2^LBADS byte.
+
+2 power of 6 x 2 power of 9
+
+nvme id-ns /dev/nvme1n1 | grep LBA
+LBA Format  0 : Metadata Size: 0   bytes - Data Size: 512 bytes - Relative Performance: 0x1 Better 
+LBA Format  1 : Metadata Size: 8   bytes - Data Size: 512 bytes - Relative Performance: 0x3 Degraded 
+LBA Format  2 : Metadata Size: 0   bytes - Data Size: 4096 bytes - Relative Performance: 0 Best  (in use)
+LBA Format  3 : Metadata Size: 8   bytes - Data Size: 4096 bytes - Relative Performance: 0x2 Good
+
+Each format has an id: 0, 1, 2, 3 in this example.
+There are two data sector sizes - 512 bytes and 4K. Typically the 4K formats provide the best performance and endurance.
+Metadata - some drives provide the capability to add a few bytes for additional metadata for each sector. This is typically used for T10/DIF CRC
+
+#Format
+nvme format /dev/nvme0n1 -l 2
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Samsung DC toolkit
+https://semiconductor.samsung.com/resources/software-resources/Samsung_Magician_DC_Linux_64bit.zip
+
+#delegate rights
+sudo chmod 755 magician
+
+#run list cmd
+./magician -L
