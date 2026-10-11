@@ -1,0 +1,77 @@
+FortiGate Vitual Appliance
+
+Step 1: Login to Fortinet Support Account
+Open a web browser
+Go to https://support.fortinet.com
+Login using your Fortinet account credential
+If you do not have an account, create one and then log in.
+
+Step 2: Open FortiGate VM Download Page
+After successful login, directly open the following page:
+
+FortiGate VM Download:
+
+https://support.fortinet.com/Download/VMImages.aspx
+
+Create a new VM with:
+
+| Setting    |             Value                                    |
+| ----------------- | --------------------------------------------- |
+| CPU               | 1 Core                                        |
+| RAM               | 2048 MB  |
+| Disk              | 2 GB (System) + 30 GB (Data)                  |
+| Network Adapter 1 | Bridged                                       |
+| Network Adapter 2 | Bridged *(or Host-Only, if required)*         |
+
+Boot the VM → On first login:
+username: admin
+password: (leave empty)
+
+#Configure Network (Bridge Mode is Best)
+#Inside VMware → set both adapters to Bridged.
+
+#Set WAN Interface to DHCP
+#In FortiGate CLI:
+
+config system interface
+    edit port1
+        set mode dhcp
+        set allowaccess ping https http ssh
+    next
+end
+
+#Check IP:
+get system interface physical
+
+#Now open in browser:
+
+https://10.0.0.90
+
+#After booting the FortiGate virtual machine, log in for the first time using the following default credentials:
+
+Username: admin
+Password: (leave blank)
+As soon as you press Enter, FortiGate will prompt you to create a new password.
+Set a strong password and confirm it.
+
+⚠️ Important:
+Remember this username and newly created password, as these credentials will be required later to log in to the FortiGate GUI (web interface).
+
+When accessing the FortiGate GUI, use the same admin username and password you created during the first login.
+
+#Add Default Route + DNS
+Default Route:
+config router static
+    edit 1
+        set device port1
+        set gateway 190.160.1.1
+    next
+end
+DNS:
+config system dns
+    set primary 8.8.8.8
+    set secondary 1.1.1.1
+end
+
+#Log in using the admin username and the password you created during the first login.
+
